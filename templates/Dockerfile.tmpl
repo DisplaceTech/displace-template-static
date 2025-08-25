@@ -6,15 +6,17 @@ FROM ghcr.io/astral-sh/uv:debian AS build
 WORKDIR /app
 
 # Copy Python project files
-COPY pyproject.toml uv.lock* ./
+COPY pyproject.toml uv.lock* README.md ./
 COPY src/ ./src/
 COPY content/ ./content/
 
 # Install Python with uv
 RUN uv python install {{ .PythonVersion | default "3.13" }}
 
-# Install dependencies and build site
-RUN uv sync --frozen --no-dev
+# Install dependencies (skip if no dependencies defined)
+RUN if [ ! -f uv.lock ]; then uv lock; fi
+RUN if grep -q "dependencies = \[" pyproject.toml && ! grep -q "dependencies = \[\s*#" pyproject.toml; then uv sync --no-dev; fi
+RUN uv sync --no-dev
 
 # Run build process (either custom script or simple copy)
 RUN if [ -f src/build.py ]; then \

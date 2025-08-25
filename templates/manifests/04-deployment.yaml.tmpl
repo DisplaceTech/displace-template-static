@@ -22,27 +22,6 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
-      initContainers:
-      - name: content-init
-        image: {{.ProjectName}}:{{ .ImageTag | default "latest" }}
-        command: ["/bin/sh", "-c"]
-        args:
-        - |
-          if [ ! -f /srv/index.html ]; then
-            echo "Copying initial content..."
-            cp -r /app/dist/* /srv/
-          else
-            echo "Content already exists, skipping initialization"
-          fi
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
-          capabilities:
-            drop:
-            - ALL
-        volumeMounts:
-        - name: content-storage
-          mountPath: /srv
       containers:
       - name: caddy
         image: caddy:2.8-alpine
@@ -72,7 +51,7 @@ spec:
           readOnly: true
         - name: content-storage
           mountPath: /srv
-          readOnly: true
+          readOnly: false
         livenessProbe:
           httpGet:
             path: /
