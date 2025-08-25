@@ -58,44 +58,40 @@ dev: ## Start local development server
 	fi
 	@$(DOCKER) run -p 8080:80 -v $(PWD)/content:/srv:ro $(PROJECT_NAME):$(IMAGE_TAG)
 
+
+
+##@ Content Management
 ##@ Deployment
 .PHONY: deploy
-deploy: ## Deploy to Kubernetes (build and deploy with Displace)
+deploy: ## Deploy to Kubernetes with content sync (complete one-step deployment)
 	@echo "$(BLUE)Deploying to Kubernetes...$(NC)"
 	@if command -v displace >/dev/null 2>&1; then \
 		displace project deploy; \
 	else \
 		echo "$(YELLOW)Displace CLI not found, using kubectl...$(NC)"; \
-		$(DOCKER) build -t $(PROJECT_NAME):$(IMAGE_TAG) .; \
 		$(KUBECTL) apply -f manifests/; \
 	fi
 	@echo "$(GREEN)Deployment completed!$(NC)"
-	@make status
-
-.PHONY: apply
-apply: ## Apply manifests to Kubernetes (without building)
-	@echo "$(BLUE)Applying Kubernetes manifests...$(NC)"
-	@$(KUBECTL) apply -f manifests/
-	@echo "$(GREEN)Manifests applied!$(NC)"
-
-.PHONY: destroy
-destroy: ## Destroy deployment from Kubernetes (using Displace)
-	@echo "$(YELLOW)Destroying deployment...$(NC)"
-	@if command -v displace >/dev/null 2>&1; then \
-		displace project destroy; \
-	else \
-		echo "$(YELLOW)Displace CLI not found, using kubectl...$(NC)"; \
-		$(KUBECTL) delete -f manifests/ --ignore-not-found=true; \
+	@echo "$(BLUE)Waiting for pods to be ready...$(NC)"
+	@$(KUBECTL) wait --for=condition=available deployment/$(PROJECT_NAME) -n $(NAMESPACE) --timeout=60s
+	@echo "$(BLUE)Syncing content to deployed pods...$(NC)"
+	@make sync-content
+	@echo ""
+	@echo "$(GREEN)✅ Deployment and content sync completed!$(NC)"
+	@echo ""
+	@echo "$(BLUE)🌐 Access your site:$(NC)"
+	@echo "  $(YELLOW)Local access:$(NC) Run 'make port-forward' then visit http://localhost:8080"
+	@echo "  $(YELLOW)Port forward:$(NC) kubectl port-forward -n $(NAMESPACE) service/$(PROJECT_NAME) 8080:80"
+	@echo "  $(YELLOW)Health check:$(NC) http://localhost:8080/health"
+	@if $(KUBECTL) get ingress -n $(NAMESPACE) -l app=$(PROJECT_NAME) >/dev/null 2>&1; then \
+		echo "  $(YELLOW)Ingress URL:$(NC) https://$(DOMAIN)"; \
 	fi
-	@echo "$(GREEN)Deployment destroyed!$(NC)"
-
-.PHONY: delete
-delete: destroy ## Delete deployment (alias for destroy)
-
-.PHONY: clean
-clean: destroy ## Clean up deployment (alias for destroy)
-
-##@ Content Management
+	@echo ""
+	@echo "$(BLUE)📋 Next steps:$(NC)"
+	@echo "  • Edit content in './content/' directory"
+	@echo "  • Run 'make sync-content' to update the live site"
+	@echo "  • Run 'make status' to check deployment health"
+	@echo "  • Run 'make logs' to view application logs"
 .PHONY: sync-content
 sync-content: ## Sync local content to running pods (no rebuild required)
 	@echo "$(BLUE)Syncing content to running pods...$(NC)"
@@ -164,7 +160,7 @@ shell: ## Access a running pod shell
 
 .PHONY: port-forward
 port-forward: ## Forward local port 8080 to service
-	@echo "$(BLUE)Port forwarding to service (http://static.local.displace.tech:8080)...$(NC)"
+	@echo "$(BLUE)Port forwarding to service (http://$(PROJECT_NAME).local.displace.tech:8080)...$(NC)"
 	@echo "$(YELLOW)Press Ctrl+C to stop$(NC)"
 	@$(KUBECTL) port-forward -n $(NAMESPACE) service/$(PROJECT_NAME) 8080:80
 
