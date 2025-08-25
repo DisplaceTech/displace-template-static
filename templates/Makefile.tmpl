@@ -42,31 +42,13 @@ help: ## Display this help
 
 ##@ Development
 .PHONY: build
-build: ## Build the Docker image
+build: ## Build the Docker image locally
 	@echo "$(BLUE)Building Docker image...$(NC)"
-	@if command -v displace >/dev/null 2>&1; then \
-		displace build; \
-	else \
-		$(DOCKER) build -t $(PROJECT_NAME):$(IMAGE_TAG) .; \
-		if [ -n "$(REGISTRY_URL)" ]; then \
-			$(DOCKER) tag $(PROJECT_NAME):$(IMAGE_TAG) $(REGISTRY_URL)/$(PROJECT_NAME):$(IMAGE_TAG); \
-		fi; \
+	@$(DOCKER) build -t $(PROJECT_NAME):$(IMAGE_TAG) .
+	@if [ -n "$(REGISTRY_URL)" ]; then \
+		$(DOCKER) tag $(PROJECT_NAME):$(IMAGE_TAG) $(REGISTRY_URL)/$(PROJECT_NAME):$(IMAGE_TAG); \
 	fi
 	@echo "$(GREEN)Build completed!$(NC)"
-
-.PHONY: push
-push: build ## Push the Docker image to registry
-	@echo "$(BLUE)Pushing Docker image...$(NC)"
-	@if command -v displace >/dev/null 2>&1; then \
-		displace push; \
-	else \
-		if [ -z "$(REGISTRY_URL)" ]; then \
-			echo "$(RED)REGISTRY_URL not set. Cannot push image.$(NC)"; \
-			exit 1; \
-		fi; \
-		$(DOCKER) push $(REGISTRY_URL)/$(PROJECT_NAME):$(IMAGE_TAG); \
-	fi
-	@echo "$(GREEN)Push completed!$(NC)"
 
 .PHONY: dev
 dev: ## Start local development server
@@ -78,11 +60,13 @@ dev: ## Start local development server
 
 ##@ Deployment
 .PHONY: deploy
-deploy: build ## Deploy to Kubernetes (build and deploy)
+deploy: ## Deploy to Kubernetes (build and deploy with Displace)
 	@echo "$(BLUE)Deploying to Kubernetes...$(NC)"
 	@if command -v displace >/dev/null 2>&1; then \
-		displace deploy; \
+		displace project deploy; \
 	else \
+		echo "$(YELLOW)Displace CLI not found, using kubectl...$(NC)"; \
+		$(DOCKER) build -t $(PROJECT_NAME):$(IMAGE_TAG) .; \
 		$(KUBECTL) apply -f manifests/; \
 	fi
 	@echo "$(GREEN)Deployment completed!$(NC)"
@@ -91,25 +75,25 @@ deploy: build ## Deploy to Kubernetes (build and deploy)
 .PHONY: apply
 apply: ## Apply manifests to Kubernetes (without building)
 	@echo "$(BLUE)Applying Kubernetes manifests...$(NC)"
-	@if command -v displace >/dev/null 2>&1; then \
-		displace apply; \
-	else \
-		$(KUBECTL) apply -f manifests/; \
-	fi
+	@$(KUBECTL) apply -f manifests/
 	@echo "$(GREEN)Manifests applied!$(NC)"
 
-.PHONY: delete
-delete: ## Delete deployment from Kubernetes
-	@echo "$(YELLOW)Deleting deployment...$(NC)"
+.PHONY: destroy
+destroy: ## Destroy deployment from Kubernetes (using Displace)
+	@echo "$(YELLOW)Destroying deployment...$(NC)"
 	@if command -v displace >/dev/null 2>&1; then \
-		displace delete; \
+		displace project destroy; \
 	else \
+		echo "$(YELLOW)Displace CLI not found, using kubectl...$(NC)"; \
 		$(KUBECTL) delete -f manifests/ --ignore-not-found=true; \
 	fi
-	@echo "$(GREEN)Deployment deleted!$(NC)"
+	@echo "$(GREEN)Deployment destroyed!$(NC)"
+
+.PHONY: delete
+delete: destroy ## Delete deployment (alias for destroy)
 
 .PHONY: clean
-clean: delete ## Clean up deployment (alias for delete)
+clean: destroy ## Clean up deployment (alias for destroy)
 
 ##@ Content Management
 .PHONY: sync-content
@@ -143,7 +127,7 @@ backup-content: ## Backup content from running pod to local directory
 status: ## Check deployment status
 	@echo "$(BLUE)Checking deployment status...$(NC)"
 	@if command -v displace >/dev/null 2>&1; then \
-		displace status; \
+		displace project info; \
 	else \
 		echo "$(YELLOW)Namespace:$(NC)"; \
 		$(KUBECTL) get namespace $(NAMESPACE) 2>/dev/null || echo "$(RED)Namespace not found$(NC)"; \
@@ -160,11 +144,7 @@ status: ## Check deployment status
 .PHONY: logs
 logs: ## View application logs
 	@echo "$(BLUE)Viewing logs for $(PROJECT_NAME)...$(NC)"
-	@if command -v displace >/dev/null 2>&1; then \
-		displace logs; \
-	else \
-		$(KUBECTL) logs -n $(NAMESPACE) -l app=$(PROJECT_NAME) -f --tail=100; \
-	fi
+	@$(KUBECTL) logs -n $(NAMESPACE) -l app=$(PROJECT_NAME) -f --tail=100
 
 .PHONY: events
 events: ## View recent events for the namespace
@@ -184,7 +164,7 @@ shell: ## Access a running pod shell
 
 .PHONY: port-forward
 port-forward: ## Forward local port 8080 to service
-	@echo "$(BLUE)Port forwarding to service (http://localhost:8080)...$(NC)"
+	@echo "$(BLUE)Port forwarding to service (http://static.local.displace.tech:8080)...$(NC)"
 	@echo "$(YELLOW)Press Ctrl+C to stop$(NC)"
 	@$(KUBECTL) port-forward -n $(NAMESPACE) service/$(PROJECT_NAME) 8080:80
 

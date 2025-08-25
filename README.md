@@ -12,36 +12,6 @@ This template provides a complete static site deployment including:
 - **Automatic HTTPS** - SSL certificates via cert-manager and Let's Encrypt
 - **Cross-platform Tooling** - Makefile that works on Linux and macOS
 
-## Features
-
-### 🚀 **Rapid Development**
-- Content sync to running pods without container rebuilds
-- `make sync-content` for instant updates during development
-- Local development server with `make dev`
-
-### 🐳 **Modern Build Process**
-- Multi-stage Docker builds with Python/uv and Caddy
-- Optional Python build scripts for static site generation
-- Support for any build tool or static site generator
-
-### ☸️ **Kubernetes-Native**
-- Simple manifests without Helm complexity
-- Persistent Volume Claims for content storage
-- Resource limits, health checks, and security best practices
-- Automatic HTTPS with cert-manager integration
-
-### 🔒 **Security First**
-- Non-root containers and security headers
-- Credential isolation with git-ignored files  
-- Automatic SSL certificate management
-- Production-ready security configurations
-
-### 🛠️ **Developer Experience**
-- Comprehensive Makefile with cross-platform support
-- Color-coded terminal output and help system
-- Standardized around `displace` commands with `kubectl` fallbacks
-- Detailed documentation and troubleshooting guides
-
 ## Template Structure
 
 ```
@@ -91,16 +61,6 @@ The following variables are available in templates:
 - `{{.Namespace}}` - Kubernetes namespace  
 - `{{.Domain}}` - Domain name for the static site
 
-### Optional Variables  
-- `{{.ImageTag}}` - Docker image tag (default: "latest")
-- `{{.Replicas}}` - Number of pod replicas (default: 2)
-- `{{.StorageClass}}` - Kubernetes storage class (default: "standard")
-- `{{.IngressClass}}` - Ingress controller class (default: "nginx")
-- `{{.CertIssuer}}` - Cert-manager cluster issuer (default: "letsencrypt-prod")
-- `{{.PythonVersion}}` - Python version for builds (default: "3.13")
-- `{{.RegistryURL}}` - Container registry URL
-- `{{.BuildCommand}}` - Custom build command
-
 ## Content Management Strategies
 
 ### Development: Content Sync
@@ -120,10 +80,7 @@ This uses `kubectl cp` to copy files directly to the Persistent Volume Claim, al
 For production deployments:
 
 ```bash
-# Build new image with updated content
-make build
-
-# Deploy with rolling update
+# Deploy with Displace (handles build and deployment)
 make deploy
 ```
 
@@ -177,15 +134,14 @@ make deploy
 displace project init static
 # Enter: my-blog, my-blog, blog.example.com
 cd my-blog
-make deploy
+make deploy  # Uses displace project deploy
 ```
 
 ### With Custom Build Process
 ```bash
 # Edit src/build.py to add custom logic
 # Update pyproject.toml with dependencies
-make build  # Builds with custom Python script
-make deploy
+make deploy  # Displace handles build and deployment
 ```
 
 ### Development Workflow

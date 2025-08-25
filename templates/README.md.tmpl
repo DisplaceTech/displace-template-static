@@ -56,13 +56,13 @@ This project deploys a static website using:
 
 | Command | Description |
 |---------|-------------|
-| `make build` | Build the Docker image |
-| `make deploy` | Deploy to Kubernetes |
-| `make status` | Check deployment status |
-| `make logs` | View application logs |
+| `make deploy` | Deploy to Kubernetes (uses `displace project deploy`) |
+| `make status` | Check deployment status (uses `displace project info`) |
+| `make destroy` | Destroy deployment (uses `displace project destroy`) |
+| `make build` | Build Docker image locally |
 | `make sync-content` | Sync local content to running pods |
+| `make logs` | View application logs |
 | `make shell` | Access a running pod |
-| `make clean` | Remove deployment |
 | `make port-forward` | Forward local port to service |
 
 ## Content Management
@@ -86,10 +86,11 @@ This approach allows rapid content updates without rebuilding containers or rest
 For production deployments or major changes:
 
 ```bash
-# Build new image with updated content
-make build
+# Deploy with Displace (handles build and deployment)
+make deploy
 
-# Deploy updated image
+# Or build locally first, then deploy
+make build
 make deploy
 ```
 
