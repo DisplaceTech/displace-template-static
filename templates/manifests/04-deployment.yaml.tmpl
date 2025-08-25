@@ -17,6 +17,11 @@ spec:
         app: {{.ProjectName}}
         displace.tech/project: {{.ProjectName}}
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       initContainers:
       - name: content-init
         image: {{.ProjectName}}:{{ .ImageTag | default "latest" }}
@@ -29,12 +34,26 @@ spec:
           else
             echo "Content already exists, skipping initialization"
           fi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
         volumeMounts:
         - name: content-storage
           mountPath: /srv
       containers:
       - name: caddy
         image: caddy:2.8-alpine
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - NET_BIND_SERVICE
         ports:
         - containerPort: 80
           name: http
@@ -45,8 +64,8 @@ spec:
             memory: "64Mi"
             cpu: "50m"
           limits:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: {{ .MemoryLimit | default "128Mi" | quote }}
+            cpu: {{ .CPULimit | default "100m" | quote }}
         volumeMounts:
         - name: caddy-config
           mountPath: /etc/caddy

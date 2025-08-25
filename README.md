@@ -4,13 +4,15 @@ A production-ready static site deployment template for Kubernetes, designed for 
 
 ## Overview
 
-This template provides a complete static site deployment including:
+This template provides everything you need to deploy modern static sites to Kubernetes with enterprise-grade features:
 
-- **Multi-stage Docker Build** - Python with uv for building, Caddy for serving
-- **Kubernetes Manifests** - Production-ready deployment without Helm complexity  
-- **Content Synchronization** - Update content without rebuilding containers
-- **Automatic HTTPS** - SSL certificates via cert-manager and Let's Encrypt
-- **Cross-platform Tooling** - Makefile that works on Linux and macOS
+- 🐳 **Multi-stage Docker Build** - Python with uv for building, Caddy for serving
+- ☸️ **Kubernetes Manifests** - Production-ready deployment without Helm complexity  
+- ⚡ **Content Synchronization** - Update content without rebuilding containers
+- 🔒 **Automatic HTTPS** - SSL certificates via cert-manager and Let's Encrypt
+- 🛠️ **Cross-platform Tooling** - Makefile that works on Linux, macOS, and Windows
+- 📊 **Built-in Monitoring** - Health checks, resource limits, and observability
+- 🔐 **Security First** - Non-root containers, security contexts, and best practices
 
 ## Template Structure
 
@@ -36,6 +38,57 @@ content/                         # Example static site content
     └── favicon.svg             # Simple SVG icon
 src/                            # Python build scripts
 └── build.py                    # Example build script
+```
+
+## Quick Start
+
+### 1. Initialize Your Project
+
+```bash
+# Initialize a new static site project
+displace project init static
+
+# You'll be prompted for:
+# - Project name (e.g., "my-blog")
+# - Kubernetes namespace (defaults to project name)
+# - Domain name (e.g., "blog.example.com")
+```
+
+### 2. Customize Your Content
+
+```bash
+cd my-blog
+
+# Edit the homepage
+vim content/index.html
+
+# Modify styles
+vim content/assets/style.css
+
+# Add more pages, images, etc.
+```
+
+### 3. Deploy to Kubernetes
+
+```bash
+# Deploy everything with one command
+make deploy
+
+# Check status
+make status
+
+# View logs
+make logs
+```
+
+### 4. Rapid Content Updates (Development)
+
+```bash
+# Edit content locally
+vim content/index.html
+
+# Sync to running pods instantly (no rebuild/restart)
+make sync-content
 ```
 
 ## Usage
@@ -131,9 +184,9 @@ make deploy
 
 ### Basic Static Site
 ```bash
+mkdir my-blog && cd my-blog
 displace project init static
 # Enter: my-blog, my-blog, blog.example.com
-cd my-blog
 make deploy  # Uses displace project deploy
 ```
 
@@ -160,24 +213,204 @@ make logs
 make shell
 ```
 
-## Contributing
+## Available Commands
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test with a local Displace CLI installation
-5. Submit a pull request
+The generated Makefile includes comprehensive commands for development and operations:
+
+### Development
+- `make dev` - Start local development server
+- `make build` - Build Docker image locally
+- `make sync-content` - Sync content to running pods without rebuild
+
+### Deployment
+- `make deploy` - Deploy using Displace CLI (recommended)
+- `make apply` - Apply Kubernetes manifests directly
+- `make destroy` - Remove deployment from cluster
+
+### Monitoring
+- `make status` - Check deployment status
+- `make logs` - View application logs
+- `make events` - View recent cluster events
+
+### Access
+- `make shell` - Access running pod shell
+- `make port-forward` - Forward local port to service
+- `make open` - Open site in browser
+
+### Utilities
+- `make validate` - Validate Kubernetes manifests
+- `make backup-content` - Backup content from pod
+- `make info` - Display project information
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Pods Not Starting
+
+```bash
+# Check pod status
+make status
+
+# View detailed pod information
+kubectl describe pods -n [namespace] -l app=[project-name]
+
+# Check events
+make events
+```
+
+**Common causes:**
+- Image pull failures
+- Resource constraints
+- PVC mounting issues
+
+#### 2. Content Sync Failing
+
+```bash
+# Verify pods are running
+make status
+
+# Check if PVC is mounted
+kubectl exec -n [namespace] deployment/[project-name] -c caddy -- ls -la /srv
+
+# Manual sync to single pod
+POD=$(kubectl get pod -n [namespace] -l app=[project-name] -o jsonpath='{.items[0].metadata.name}')
+kubectl cp content/. [namespace]/$POD:/srv/ -c caddy
+```
+
+#### 3. HTTPS Certificate Issues
+
+```bash
+# Check certificate status
+kubectl get certificates -n [namespace]
+
+# Check cert-manager logs
+kubectl logs -n cert-manager deployment/cert-manager
+
+# Check ingress configuration
+kubectl describe ingress -n [namespace] [project-name]
+```
+
+#### 4. Site Not Accessible
+
+```bash
+# Check service endpoints
+kubectl get endpoints -n [namespace] [project-name]
+
+# Test internal connectivity
+make port-forward
+# Then visit http://localhost:8080
+
+# Check ingress controller logs
+kubectl logs -n ingress-nginx deployment/ingress-nginx-controller
+```
+
+#### 5. Build Failures
+
+```bash
+# Test build locally
+docker build -t test-build .
+
+# Check build logs
+docker build --no-cache -t test-build .
+
+# Validate Python dependencies
+uv pip check
+```
+
+### Performance Optimization
+
+#### Resource Tuning
+
+Edit `manifests/04-deployment.yaml` to adjust resources:
+
+```yaml
+resources:
+  requests:
+    memory: "128Mi"  # Increase for larger sites
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+```
+
+#### Storage Performance
+
+For better performance, use SSD storage classes:
+
+```yaml
+# In manifests/02-content-pvc.yaml
+storageClassName: "ssd"  # or "gp2" on AWS
+```
+
+#### Scaling
+
+Increase replicas for higher availability:
+
+```yaml
+# In manifests/04-deployment.yaml  
+replicas: 3  # Default is 2
+```
+
+### Development Tips
+
+#### Custom Build Process
+
+Modify `src/build.py` to add custom build logic:
+
+```python
+# Example: Process Markdown files
+import markdown
+
+def build_markdown():
+    # Convert .md files to .html
+    pass
+```
+
+#### Content Structure
+
+Organize content for better maintainability:
+
+```
+content/
+├── index.html
+├── about/
+│   └── index.html
+├── assets/
+│   ├── css/
+│   ├── js/
+│   └── images/
+└── api/
+    └── data.json
+```
+
+#### Environment-Specific Configuration
+
+Use `.credentials` file for environment variables:
+
+```bash
+# .credentials (auto-ignored by git)
+REGISTRY_URL=registry.example.com
+CUSTOM_DOMAIN=staging.example.com
+```
+
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+Copyright © 2025 Displace Technologies
 
-## Support
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-- **Documentation**: [Displace CLI Docs](https://displace.tech/docs)
-- **Issues**: [GitHub Issues](https://github.com/DisplaceTech/displace-template-static/issues)
-- **Community**: [Discord](https://discord.gg/displace)
+    http://www.apache.org/licenses/LICENSE-2.0
 
----
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
-**Generated with Displace CLI** - Visit [displace.tech](https://displace.tech) for more templates and tools.
+## About Displace Technologies
+
+[Displace Technologies](https://displace.tech) - Making Kubernetes deployment simple and reliable.

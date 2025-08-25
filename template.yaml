@@ -37,6 +37,7 @@ template:
       description: "Docker image tag"
       type: string
       default: "latest"
+      example: "v1.0.0"
       
     - name: Replicas
       description: "Number of pod replicas"
@@ -49,34 +50,59 @@ template:
       description: "Kubernetes storage class for PVC"
       type: string
       default: "standard"
+      example: "ssd"
+      
+    - name: StorageSize
+      description: "Size of the content storage PVC"
+      type: string
+      default: "1Gi"
+      pattern: "^[0-9]+[KMGT]i?$"
+      example: "5Gi"
       
     - name: IngressClass
       description: "Ingress controller class"
       type: string
       default: "nginx"
+      example: "traefik"
       
     - name: CertIssuer
       description: "Cert-manager cluster issuer"
       type: string
       default: "letsencrypt-prod"
+      example: "letsencrypt-staging"
       
     - name: PythonVersion
       description: "Python version for build process"
       type: string
       default: "3.13"
       pattern: "^3\\.[0-9]+$"
+      example: "3.12"
       
     - name: RegistryURL
-      description: "Container registry URL"
+      description: "Container registry URL (optional for local development)"
       type: string
       default: ""
       example: "registry.example.com"
       
     - name: BuildCommand
-      description: "Custom build command"
+      description: "Custom build command (optional)"
       type: string
       default: ""
       example: "uv run src/build.py"
+      
+    - name: MemoryLimit
+      description: "Container memory limit"
+      type: string
+      default: "128Mi"
+      pattern: "^[0-9]+[KMGT]i?$"
+      example: "256Mi"
+      
+    - name: CPULimit
+      description: "Container CPU limit"
+      type: string
+      default: "100m"
+      pattern: "^[0-9]+m?$"
+      example: "200m"
 
 # Template features and capabilities
 features:

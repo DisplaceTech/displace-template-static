@@ -5,11 +5,16 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     app: {{.ProjectName}}
+    component: storage
     displace.tech/project: {{.ProjectName}}
+    displace.tech/template: static
+  annotations:
+    description: "Persistent storage for static site content"
+    displace.tech/content-type: "static-files"
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi
+      storage: {{ .StorageSize | default "1Gi" }}
   storageClassName: {{ .StorageClass | default "standard" }}

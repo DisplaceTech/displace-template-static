@@ -2,12 +2,26 @@
 
 This document outlines the recommended approaches for updating content in your static site deployment without requiring container rebuilds.
 
+> ⚠️ **IMPORTANT**: Content sync is designed for **development environments only**. For production deployments, always use the full rebuild approach to ensure consistency, auditability, and security.
+
 ## Overview
 
 The template provides two main approaches for content updates:
 
-1. **Content Sync** - Direct synchronization to running pods (recommended for development)
-2. **Full Rebuild** - Container rebuild and redeployment (recommended for production)
+1. 📝 **Content Sync** - Direct synchronization to running pods (**development only**)
+2. 🚀 **Full Rebuild** - Container rebuild and redeployment (**production recommended**)
+
+## 🚨 Production vs Development Guidelines
+
+| Aspect | Content Sync (Dev) | Full Rebuild (Prod) |
+|--------|-------------------|--------------------|
+| **Use Case** | Rapid iteration, testing | Production deployments |
+| **Persistence** | Changes lost on pod restart | Permanent in image |
+| **Version Control** | Manual commit required | Automatic with CI/CD |
+| **Rollback** | Manual/complex | Standard K8s rollback |
+| **Security** | Lower (direct pod access) | Higher (image-based) |
+| **Auditability** | Limited | Full Git history |
+| **Multi-env** | Manual sync required | Consistent across envs |
 
 ## Method 1: Content Sync (Recommended for Development)
 
@@ -48,12 +62,21 @@ The deployment uses a Persistent Volume Claim (PVC) to store site content separa
 - Targets the `caddy` container specifically
 - Content is persisted in the PVC across pod restarts
 
-### Limitations
+### 🚨 Critical Limitations
 
-- Requires `kubectl` access to the cluster
-- Only updates files that exist locally (doesn't remove files)
-- Not suitable for production deployments
-- Changes are not version controlled unless committed locally
+> ⚠️ **WARNING: DO NOT USE IN PRODUCTION**
+>
+> Content sync has significant limitations that make it unsuitable for production environments:
+
+- **📊 No Persistence**: Changes are lost when pods restart or scale
+- **🔄 No Version Control**: Changes exist only in running pods unless manually committed
+- **🔐 Security Risk**: Requires direct pod access with `kubectl cp` permissions
+- **📝 No Audit Trail**: No record of what changed, when, or by whom
+- **⚙️ Inconsistent State**: Different pods may have different content versions
+- **🚑 No Rollback**: Cannot easily revert problematic changes
+- **🌐 Environment Drift**: Production and staging environments become inconsistent
+
+**For production, always use the full rebuild method described below.**
 
 ## Method 2: Full Rebuild (Recommended for Production)
 
