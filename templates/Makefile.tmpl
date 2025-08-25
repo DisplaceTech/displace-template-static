@@ -1,0 +1,243 @@
+# {{.ProjectName}} Static Site Makefile
+# Cross-platform support for Linux and macOS
+
+# Load environment variables from .credentials if it exists
+ifneq (,$(wildcard .credentials))
+    include .credentials
+    export
+endif
+
+# Default values
+PROJECT_NAME ?= {{.ProjectName}}
+NAMESPACE ?= {{.Namespace}}
+DOMAIN ?= {{.Domain}}
+IMAGE_TAG ?= latest
+REGISTRY_URL ?= 
+KUBECTL ?= kubectl
+DOCKER ?= docker
+
+# Detect OS for cross-platform compatibility  
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    OPEN_CMD = open
+    COPY_CMD = cp -R
+else
+    OPEN_CMD = xdg-open
+    COPY_CMD = cp -R
+endif
+
+# Colors for output
+RED=\033[0;31m
+GREEN=\033[0;32m
+YELLOW=\033[1;33m
+BLUE=\033[0;34m
+NC=\033[0m # No Color
+
+.DEFAULT_GOAL := help
+
+##@ Help
+.PHONY: help
+help: ## Display this help
+	@awk 'BEGIN {FS = ":.*##"; printf "\n$(BLUE)Usage:$(NC)\n  make $(YELLOW)<target>$(NC)\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  $(YELLOW)%-15s$(NC) %s\n", $$1, $$2 } /^##@/ { printf "\n$(BLUE)%s$(NC)\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+##@ Development
+.PHONY: build
+build: ## Build the Docker image
+	@echo "$(BLUE)Building Docker image...$(NC)"
+	@if command -v displace >/dev/null 2>&1; then \
+		displace build; \
+	else \
+		$(DOCKER) build -t $(PROJECT_NAME):$(IMAGE_TAG) .; \
+		if [ -n "$(REGISTRY_URL)" ]; then \
+			$(DOCKER) tag $(PROJECT_NAME):$(IMAGE_TAG) $(REGISTRY_URL)/$(PROJECT_NAME):$(IMAGE_TAG); \
+		fi; \
+	fi
+	@echo "$(GREEN)Build completed!$(NC)"
+
+.PHONY: push
+push: build ## Push the Docker image to registry
+	@echo "$(BLUE)Pushing Docker image...$(NC)"
+	@if command -v displace >/dev/null 2>&1; then \
+		displace push; \
+	else \
+		if [ -z "$(REGISTRY_URL)" ]; then \
+			echo "$(RED)REGISTRY_URL not set. Cannot push image.$(NC)"; \
+			exit 1; \
+		fi; \
+		$(DOCKER) push $(REGISTRY_URL)/$(PROJECT_NAME):$(IMAGE_TAG); \
+	fi
+	@echo "$(GREEN)Push completed!$(NC)"
+
+.PHONY: dev
+dev: ## Start local development server
+	@echo "$(BLUE)Starting development server...$(NC)"
+	@if [ -f src/build.py ]; then \
+		uv run src/build.py; \
+	fi
+	@$(DOCKER) run -p 8080:80 -v $(PWD)/content:/srv:ro $(PROJECT_NAME):$(IMAGE_TAG)
+
+##@ Deployment
+.PHONY: deploy
+deploy: build ## Deploy to Kubernetes (build and deploy)
+	@echo "$(BLUE)Deploying to Kubernetes...$(NC)"
+	@if command -v displace >/dev/null 2>&1; then \
+		displace deploy; \
+	else \
+		$(KUBECTL) apply -f manifests/; \
+	fi
+	@echo "$(GREEN)Deployment completed!$(NC)"
+	@make status
+
+.PHONY: apply
+apply: ## Apply manifests to Kubernetes (without building)
+	@echo "$(BLUE)Applying Kubernetes manifests...$(NC)"
+	@if command -v displace >/dev/null 2>&1; then \
+		displace apply; \
+	else \
+		$(KUBECTL) apply -f manifests/; \
+	fi
+	@echo "$(GREEN)Manifests applied!$(NC)"
+
+.PHONY: delete
+delete: ## Delete deployment from Kubernetes
+	@echo "$(YELLOW)Deleting deployment...$(NC)"
+	@if command -v displace >/dev/null 2>&1; then \
+		displace delete; \
+	else \
+		$(KUBECTL) delete -f manifests/ --ignore-not-found=true; \
+	fi
+	@echo "$(GREEN)Deployment deleted!$(NC)"
+
+.PHONY: clean
+clean: delete ## Clean up deployment (alias for delete)
+
+##@ Content Management
+.PHONY: sync-content
+sync-content: ## Sync local content to running pods (no rebuild required)
+	@echo "$(BLUE)Syncing content to running pods...$(NC)"
+	@PODS=$$($(KUBECTL) get pods -n $(NAMESPACE) -l app=$(PROJECT_NAME) -o jsonpath='{.items[*].metadata.name}'); \
+	if [ -z "$$PODS" ]; then \
+		echo "$(RED)No running pods found for app=$(PROJECT_NAME) in namespace=$(NAMESPACE)$(NC)"; \
+		exit 1; \
+	fi; \
+	for pod in $$PODS; do \
+		echo "$(YELLOW)Syncing to pod: $$pod$(NC)"; \
+		$(KUBECTL) cp content/. $(NAMESPACE)/$$pod:/srv/ -c caddy; \
+	done
+	@echo "$(GREEN)Content sync completed!$(NC)"
+
+.PHONY: backup-content
+backup-content: ## Backup content from running pod to local directory
+	@echo "$(BLUE)Backing up content from pod...$(NC)"
+	@mkdir -p backup/content-$$(date +%Y%m%d-%H%M%S)
+	@POD=$$($(KUBECTL) get pod -n $(NAMESPACE) -l app=$(PROJECT_NAME) -o jsonpath='{.items[0].metadata.name}'); \
+	if [ -n "$$POD" ]; then \
+		$(KUBECTL) cp $(NAMESPACE)/$$POD:/srv/ backup/content-$$(date +%Y%m%d-%H%M%S)/ -c caddy; \
+		echo "$(GREEN)Content backed up to backup/content-$$(date +%Y%m%d-%H%M%S)/$(NC)"; \
+	else \
+		echo "$(RED)No running pods found$(NC)"; \
+	fi
+
+##@ Monitoring
+.PHONY: status
+status: ## Check deployment status
+	@echo "$(BLUE)Checking deployment status...$(NC)"
+	@if command -v displace >/dev/null 2>&1; then \
+		displace status; \
+	else \
+		echo "$(YELLOW)Namespace:$(NC)"; \
+		$(KUBECTL) get namespace $(NAMESPACE) 2>/dev/null || echo "$(RED)Namespace not found$(NC)"; \
+		echo "\n$(YELLOW)Deployments:$(NC)"; \
+		$(KUBECTL) get deployments -n $(NAMESPACE) -l app=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No deployments found$(NC)"; \
+		echo "\n$(YELLOW)Pods:$(NC)"; \
+		$(KUBECTL) get pods -n $(NAMESPACE) -l app=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No pods found$(NC)"; \
+		echo "\n$(YELLOW)Services:$(NC)"; \
+		$(KUBECTL) get services -n $(NAMESPACE) -l app=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No services found$(NC)"; \
+		echo "\n$(YELLOW)Ingress:$(NC)"; \
+		$(KUBECTL) get ingress -n $(NAMESPACE) -l app=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No ingress found$(NC)"; \
+	fi
+
+.PHONY: logs
+logs: ## View application logs
+	@echo "$(BLUE)Viewing logs for $(PROJECT_NAME)...$(NC)"
+	@if command -v displace >/dev/null 2>&1; then \
+		displace logs; \
+	else \
+		$(KUBECTL) logs -n $(NAMESPACE) -l app=$(PROJECT_NAME) -f --tail=100; \
+	fi
+
+.PHONY: events
+events: ## View recent events for the namespace
+	@echo "$(BLUE)Recent events in namespace $(NAMESPACE):$(NC)"
+	@$(KUBECTL) get events -n $(NAMESPACE) --sort-by='.lastTimestamp' | tail -20
+
+##@ Access
+.PHONY: shell
+shell: ## Access a running pod shell
+	@echo "$(BLUE)Opening shell in pod...$(NC)"
+	@POD=$$($(KUBECTL) get pod -n $(NAMESPACE) -l app=$(PROJECT_NAME) -o jsonpath='{.items[0].metadata.name}'); \
+	if [ -n "$$POD" ]; then \
+		$(KUBECTL) exec -it -n $(NAMESPACE) $$POD -c caddy -- /bin/sh; \
+	else \
+		echo "$(RED)No running pods found$(NC)"; \
+	fi
+
+.PHONY: port-forward
+port-forward: ## Forward local port 8080 to service
+	@echo "$(BLUE)Port forwarding to service (http://localhost:8080)...$(NC)"
+	@echo "$(YELLOW)Press Ctrl+C to stop$(NC)"
+	@$(KUBECTL) port-forward -n $(NAMESPACE) service/$(PROJECT_NAME) 8080:80
+
+.PHONY: open
+open: ## Open the website in browser (requires ingress)
+	@echo "$(BLUE)Opening https://$(DOMAIN) in browser...$(NC)"
+	@$(OPEN_CMD) https://$(DOMAIN)
+
+##@ Utilities
+.PHONY: validate
+validate: ## Validate Kubernetes manifests
+	@echo "$(BLUE)Validating manifests...$(NC)"
+	@for file in manifests/*.yaml; do \
+		echo "$(YELLOW)Validating $$file$(NC)"; \
+		$(KUBECTL) apply --dry-run=client -f "$$file" >/dev/null; \
+	done
+	@echo "$(GREEN)All manifests are valid!$(NC)"
+
+.PHONY: lint
+lint: ## Lint Python code
+	@echo "$(BLUE)Linting Python code...$(NC)"
+	@if [ -d src/ ]; then \
+		uv run black --check src/; \
+		uv run isort --check-only src/; \
+		uv run flake8 src/; \
+	else \
+		echo "$(YELLOW)No Python source code to lint$(NC)"; \
+	fi
+
+.PHONY: format
+format: ## Format Python code
+	@echo "$(BLUE)Formatting Python code...$(NC)"
+	@if [ -d src/ ]; then \
+		uv run black src/; \
+		uv run isort src/; \
+	else \
+		echo "$(YELLOW)No Python source code to format$(NC)"; \
+	fi
+
+.PHONY: test
+test: ## Run tests
+	@echo "$(BLUE)Running tests...$(NC)"
+	@if [ -f pyproject.toml ]; then \
+		uv run pytest; \
+	else \
+		echo "$(YELLOW)No test configuration found$(NC)"; \
+	fi
+
+.PHONY: info
+info: ## Display project information
+	@echo "$(BLUE)Project Information:$(NC)"
+	@echo "  $(YELLOW)Project:$(NC) $(PROJECT_NAME)"
+	@echo "  $(YELLOW)Namespace:$(NC) $(NAMESPACE)"  
+	@echo "  $(YELLOW)Domain:$(NC) $(DOMAIN)"
+	@echo "  $(YELLOW)Image Tag:$(NC) $(IMAGE_TAG)"
+	@echo "  $(YELLOW)Registry:$(NC) $(REGISTRY_URL)"

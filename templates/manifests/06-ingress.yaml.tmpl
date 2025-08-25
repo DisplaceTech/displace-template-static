@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{.ProjectName}}
+  namespace: {{.Namespace}}
+  labels:
+    app: {{.ProjectName}}
+    displace.tech/project: {{.ProjectName}}
+  annotations:
+    # Cert-manager for SSL certificates
+    cert-manager.io/cluster-issuer: {{ .CertIssuer | default "letsencrypt-prod" }}
+    # Nginx ingress specific annotations
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: {{ .IngressClass | default "nginx" }}
+  tls:
+  - hosts:
+    - {{.Domain}}
+    secretName: {{.ProjectName}}-tls
+  rules:
+  - host: {{.Domain}}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{.ProjectName}}
+            port:
+              number: 80

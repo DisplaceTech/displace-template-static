@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{.ProjectName}}-caddy-config
+  namespace: {{.Namespace}}
+  labels:
+    app: {{.ProjectName}}
+    displace.tech/project: {{.ProjectName}}
+data:
+  Caddyfile: |
+    :80 {
+      root * /srv
+      file_server
+      encode gzip
+      
+      # Handle common static site routes
+      try_files {path} {path}/ {path}.html /index.html
+      
+      # Security headers
+      header {
+        # Enable HSTS
+        Strict-Transport-Security max-age=31536000;
+        # Prevent MIME sniffing
+        X-Content-Type-Options nosniff
+        # Prevent clickjacking
+        X-Frame-Options DENY
+        # XSS protection
+        X-XSS-Protection "1; mode=block"
+        # Remove server header
+        -Server
+      }
+      
+      # Cache static assets
+      @static {
+        path *.css *.js *.ico *.png *.jpg *.jpeg *.gif *.svg *.woff *.woff2
+      }
+      header @static Cache-Control max-age=86400
+    }

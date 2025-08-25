@@ -1,0 +1,182 @@
+# {{.ProjectName}} - Static Site
+
+A production-ready static site deployment for Kubernetes, created with the [Displace CLI](https://displace.tech).
+
+## Overview
+
+This project deploys a static website using:
+
+- **Static Site Generator** - Python with uv for building content
+- **Web Server** - Caddy for high-performance serving with automatic HTTPS
+- **Content Storage** - Kubernetes PVC for persistent content updates
+- **Container** - Multi-stage Docker build for optimized images
+
+## Project Structure
+
+```
+{{.ProjectName}}/
+├── .credentials              # Project credentials (git-ignored)
+├── .gitignore               # Git ignore rules
+├── Dockerfile               # Multi-stage build definition
+├── Makefile                 # Standardized commands
+├── pyproject.toml           # Python project configuration
+├── content/                 # Your static site content
+│   ├── index.html          # Main page
+│   └── assets/             # Static assets
+├── src/                     # Python build scripts (optional)
+│   └── build.py            # Site generation script
+├── manifests/              # Generated Kubernetes manifests
+│   ├── 01-namespace.yaml
+│   ├── 02-content-pvc.yaml
+│   ├── 03-caddy-config.yaml
+│   ├── 04-deployment.yaml
+│   ├── 05-service.yaml
+│   └── 06-ingress.yaml
+└── templates/              # Template files (for reference)
+```
+
+## Quick Start
+
+1. **Build and deploy**:
+   ```bash
+   make deploy
+   ```
+
+2. **Update content without rebuilding**:
+   ```bash
+   make sync-content
+   ```
+
+3. **Check deployment status**:
+   ```bash
+   make status
+   ```
+
+## Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `make build` | Build the Docker image |
+| `make deploy` | Deploy to Kubernetes |
+| `make status` | Check deployment status |
+| `make logs` | View application logs |
+| `make sync-content` | Sync local content to running pods |
+| `make shell` | Access a running pod |
+| `make clean` | Remove deployment |
+| `make port-forward` | Forward local port to service |
+
+## Content Management
+
+### Method 1: Content Sync (Recommended for Development)
+
+Update your content in the `content/` directory and sync to running pods:
+
+```bash
+# Edit your content
+vim content/index.html
+
+# Sync to all running pods
+make sync-content
+```
+
+This approach allows rapid content updates without rebuilding containers or restarting deployments.
+
+### Method 2: Full Rebuild and Deploy
+
+For production deployments or major changes:
+
+```bash
+# Build new image with updated content
+make build
+
+# Deploy updated image
+make deploy
+```
+
+## Configuration
+
+Project settings are stored in `.credentials`:
+
+- `DOMAIN` - Your website domain
+- `NAMESPACE` - Kubernetes namespace
+- `STORAGE_CLASS` - PVC storage class
+- `INGRESS_CLASS` - Ingress controller class
+- `CERT_ISSUER` - Cert-manager cluster issuer
+
+## Python Build Scripts
+
+The optional `src/` directory can contain Python scripts for static site generation:
+
+```python
+# src/build.py
+import shutil
+from pathlib import Path
+
+def build():
+    """Generate static site content"""
+    content_dir = Path("content")
+    dist_dir = Path("dist")
+    
+    # Your build logic here
+    shutil.copytree(content_dir, dist_dir, dirs_exist_ok=True)
+
+if __name__ == "__main__":
+    build()
+```
+
+## Security Features
+
+- **Automatic HTTPS** via cert-manager and Let's Encrypt
+- **Security headers** configured in Caddy
+- **Resource limits** on Kubernetes containers  
+- **Credential isolation** with git-ignored files
+- **Read-only containers** for web server
+
+## Troubleshooting
+
+### Check pod status
+```bash
+make status
+kubectl get pods -n {{.Namespace}}
+```
+
+### View logs
+```bash
+make logs
+# Or directly:
+kubectl logs -n {{.Namespace}} deployment/{{.ProjectName}} -f
+```
+
+### Access pod shell
+```bash
+make shell
+```
+
+### Content sync issues
+```bash
+# Verify PVC mount
+kubectl exec -n {{.Namespace}} deployment/{{.ProjectName}} -- ls -la /srv
+
+# Manual content copy
+kubectl cp content/ {{.Namespace}}/$(kubectl get pod -n {{.Namespace}} -l app={{.ProjectName}} -o jsonpath="{.items[0].metadata.name}"):/srv/
+```
+
+## Customization
+
+### Custom Build Process
+
+1. Update `src/build.py` with your build logic
+2. Modify `pyproject.toml` dependencies
+3. Update `Dockerfile` build steps if needed
+
+### Custom Caddy Configuration
+
+Edit `templates/manifests/03-caddy-config.yaml.tmpl` to modify the Caddyfile.
+
+### Resource Scaling
+
+Adjust replicas and resource limits in `templates/manifests/04-deployment.yaml.tmpl`.
+
+---
+
+**Generated with Displace CLI** - Visit [displace.tech](https://displace.tech) for more templates and tools.

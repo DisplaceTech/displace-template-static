@@ -1,0 +1,152 @@
+name: static
+version: 1.0.0
+description: A production-ready static site deployment template for Kubernetes
+author: Displace Technologies
+license: MIT
+homepage: https://github.com/DisplaceTech/displace-template-static
+repository: https://github.com/DisplaceTech/displace-template-static
+
+# Template configuration
+template:
+  # Required variables
+  variables:
+    - name: ProjectName
+      description: "Name of the static site project"
+      required: true
+      type: string
+      pattern: "^[a-z][a-z0-9-]*[a-z0-9]$"
+      example: "my-static-site"
+      
+    - name: Namespace
+      description: "Kubernetes namespace for the deployment"
+      required: true
+      type: string
+      default: "{{.ProjectName}}"
+      pattern: "^[a-z][a-z0-9-]*[a-z0-9]$"
+      
+    - name: Domain
+      description: "Domain name for the static site"
+      required: true
+      type: string
+      pattern: "^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]$"
+      example: "example.com"
+
+  # Optional variables with defaults
+  optional_variables:
+    - name: ImageTag
+      description: "Docker image tag"
+      type: string
+      default: "latest"
+      
+    - name: Replicas
+      description: "Number of pod replicas"
+      type: integer
+      default: 2
+      minimum: 1
+      maximum: 10
+      
+    - name: StorageClass
+      description: "Kubernetes storage class for PVC"
+      type: string
+      default: "standard"
+      
+    - name: IngressClass
+      description: "Ingress controller class"
+      type: string
+      default: "nginx"
+      
+    - name: CertIssuer
+      description: "Cert-manager cluster issuer"
+      type: string
+      default: "letsencrypt-prod"
+      
+    - name: PythonVersion
+      description: "Python version for build process"
+      type: string
+      default: "3.13"
+      pattern: "^3\\.[0-9]+$"
+      
+    - name: RegistryURL
+      description: "Container registry URL"
+      type: string
+      default: ""
+      example: "registry.example.com"
+      
+    - name: BuildCommand
+      description: "Custom build command"
+      type: string
+      default: ""
+      example: "uv run src/build.py"
+
+# Template features and capabilities
+features:
+  - kubernetes
+  - docker
+  - static-site
+  - caddy
+  - python
+  - content-sync
+  - https
+  - pvc-storage
+  
+categories:
+  - web
+  - static-site
+  - kubernetes
+  
+tags:
+  - static
+  - caddy
+  - python
+  - kubernetes
+  - docker
+  - uv
+  - https
+  - pvc
+
+# System requirements
+requirements:
+  kubernetes: ">=1.20"
+  docker: ">=20.10"
+  tools:
+    - kubectl
+    - docker
+  optional_tools:
+    - uv
+    - python3
+
+# Template structure validation
+structure:
+  templates_dir: "templates"
+  content_dir: "content"
+  build_dir: "src"
+  
+  required_files:
+    - "templates/Dockerfile.tmpl"
+    - "templates/Makefile.tmpl"
+    - "templates/README.md.tmpl"
+    - "templates/manifests/01-namespace.yaml.tmpl"
+    - "templates/manifests/04-deployment.yaml.tmpl"
+    - "content/index.html"
+
+# Post-generation instructions
+post_generation:
+  message: |
+    🎉 Static site template created successfully!
+    
+    Next steps:
+    1. Edit your content in the content/ directory
+    2. Customize the build process in src/build.py (optional)
+    3. Deploy to Kubernetes: make deploy
+    4. For rapid content updates: make sync-content
+    
+    For detailed documentation, see README.md
+    For content sync strategies, see CONTENT_SYNC.md
+    
+  commands:
+    - description: "Build and deploy the static site"
+      command: "make deploy"
+    - description: "Sync content without rebuilding"
+      command: "make sync-content"
+    - description: "Check deployment status"
+      command: "make status"

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.ProjectName}} - Static Site</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+</head>
+<body>
+    <header>
+        <nav>
+            <h1>{{.ProjectName}}</h1>
+            <ul>
+                <li><a href="#about">About</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h2>Welcome to {{.ProjectName}}</h2>
+            <p>Your production-ready static site, deployed with Kubernetes and powered by Caddy.</p>
+            <a href="#about" class="cta-button">Learn More</a>
+        </section>
+
+        <section id="about" class="content-section">
+            <h2>About This Site</h2>
+            <p>This is a template static site created with the <strong>Displace CLI</strong>. It demonstrates a modern, scalable deployment architecture using:</p>
+            <ul>
+                <li>🐳 <strong>Docker</strong> - Multi-stage builds with Python/uv and Caddy</li>
+                <li>☸️ <strong>Kubernetes</strong> - Production-ready manifests</li>
+                <li>⚡ <strong>Caddy</strong> - High-performance web server with automatic HTTPS</li>
+                <li>🔄 <strong>Content Sync</strong> - Update content without rebuilding containers</li>
+            </ul>
+        </section>
+
+        <section id="features" class="content-section">
+            <h2>Key Features</h2>
+            <div class="features-grid">
+                <div class="feature">
+                    <h3>🚀 Fast Deployment</h3>
+                    <p>Deploy your static site to Kubernetes with a single command</p>
+                </div>
+                <div class="feature">
+                    <h3>🔄 Content Sync</h3>
+                    <p>Update content without rebuilding containers using PVC synchronization</p>
+                </div>
+                <div class="feature">
+                    <h3>🔒 Security First</h3>
+                    <p>Automatic HTTPS, security headers, and non-root containers</p>
+                </div>
+                <div class="feature">
+                    <h3>📈 Scalable</h3>
+                    <p>Built for production with resource limits and health checks</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact" class="content-section">
+            <h2>Getting Started</h2>
+            <p>Ready to customize this template? Here's how to get started:</p>
+            <ol>
+                <li>Edit the content in the <code>content/</code> directory</li>
+                <li>Run <code>make sync-content</code> to update the live site</li>
+                <li>For major changes, use <code>make build</code> and <code>make deploy</code></li>
+                <li>Visit the <a href="https://displace.tech" target="_blank">Displace CLI documentation</a> for more advanced features</li>
+            </ol>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 {{.ProjectName}}. Generated with <a href="https://displace.tech" target="_blank">Displace CLI</a>.</p>
+    </footer>
+</body>
+</html>
