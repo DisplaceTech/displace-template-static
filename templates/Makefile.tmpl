@@ -60,7 +60,6 @@ dev: ## Start local development server
 
 
 
-##@ Content Management
 ##@ Deployment
 .PHONY: deploy
 deploy: ## Deploy to Kubernetes with content sync (complete one-step deployment)
@@ -92,6 +91,19 @@ deploy: ## Deploy to Kubernetes with content sync (complete one-step deployment)
 	@echo "  • Run 'make sync-content' to update the live site"
 	@echo "  • Run 'make status' to check deployment health"
 	@echo "  • Run 'make logs' to view application logs"
+
+.PHONY: destroy
+destroy: ## Remove deployment from Kubernetes
+	@echo "$(RED)Destroying deployment...$(NC)"
+	@if command -v displace >/dev/null 2>&1; then \
+		displace project destroy; \
+	else \
+		echo "$(YELLOW)Displace CLI not found, using kubectl...$(NC)"; \
+		$(KUBECTL) delete -f manifests/ --ignore-not-found; \
+	fi
+	@echo "$(GREEN)Deployment removed!$(NC)"
+
+##@ Content Management
 .PHONY: sync-content
 sync-content: ## Sync local content to running pods (no rebuild required)
 	@echo "$(BLUE)Syncing content to running pods...$(NC)"

@@ -54,16 +54,24 @@ This project deploys a static website using:
 
 ## Available Commands
 
+Run `make help` to see all available commands:
+
 | Command | Description |
 |---------|-------------|
-| `make deploy` | Deploy to Kubernetes (uses `displace project deploy`) |
-| `make status` | Check deployment status (uses `displace project info`) |
-| `make destroy` | Destroy deployment (uses `displace project destroy`) |
-| `make build` | Build Docker image locally |
-| `make sync-content` | Sync local content to running pods |
+| `make deploy` | Deploy to Kubernetes with content sync |
+| `make destroy` | Remove deployment from Kubernetes |
+| `make status` | Check deployment status |
 | `make logs` | View application logs |
-| `make shell` | Access a running pod |
-| `make port-forward` | Forward local port to service |
+| `make events` | View recent Kubernetes events |
+| `make shell` | Access a running pod shell |
+| `make port-forward` | Forward local port 8080 to service |
+| `make open` | Open website in browser |
+| `make build` | Build Docker image locally |
+| `make dev` | Start local development server |
+| `make sync-content` | Sync local content to running pods |
+| `make backup-content` | Backup content from running pod |
+| `make validate` | Validate Kubernetes manifests |
+| `make info` | Display project information |
 
 ## Content Management
 
