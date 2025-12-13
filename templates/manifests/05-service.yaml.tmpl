@@ -4,11 +4,14 @@ metadata:
   name: {{.ProjectName}}
   namespace: {{.Namespace}}
   labels:
-    app: {{.ProjectName}}
-    displace.tech/project: {{.ProjectName}}
+    app.kubernetes.io/name: {{.ProjectName}}
+    app.kubernetes.io/instance: {{.ProjectName}}
+    app.kubernetes.io/component: app
+    app.kubernetes.io/managed-by: displace
 spec:
   selector:
-    app: {{.ProjectName}}
+    app.kubernetes.io/name: {{.ProjectName}}
+    app.kubernetes.io/component: app
   ports:
   - name: http
     port: 80

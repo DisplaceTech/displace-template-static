@@ -4,13 +4,12 @@ metadata:
   name: {{.ProjectName}}-content
   namespace: {{.Namespace}}
   labels:
-    app: {{.ProjectName}}
-    component: storage
-    displace.tech/project: {{.ProjectName}}
-    displace.tech/template: static
+    app.kubernetes.io/name: {{.ProjectName}}
+    app.kubernetes.io/instance: {{.ProjectName}}
+    app.kubernetes.io/component: storage
+    app.kubernetes.io/managed-by: displace
   annotations:
     description: "Persistent storage for static site content"
-    displace.tech/content-type: "static-files"
 spec:
   accessModes:
     - ReadWriteOnce

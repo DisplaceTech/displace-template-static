@@ -4,18 +4,22 @@ metadata:
   name: {{.ProjectName}}
   namespace: {{.Namespace}}
   labels:
-    app: {{.ProjectName}}
-    displace.tech/project: {{.ProjectName}}
+    app.kubernetes.io/name: {{.ProjectName}}
+    app.kubernetes.io/instance: {{.ProjectName}}
+    app.kubernetes.io/component: app
+    app.kubernetes.io/managed-by: displace
 spec:
   replicas: {{ .Replicas | default 2 }}
   selector:
     matchLabels:
-      app: {{.ProjectName}}
+      app.kubernetes.io/name: {{.ProjectName}}
+      app.kubernetes.io/component: app
   template:
     metadata:
       labels:
-        app: {{.ProjectName}}
-        displace.tech/project: {{.ProjectName}}
+        app.kubernetes.io/name: {{.ProjectName}}
+        app.kubernetes.io/instance: {{.ProjectName}}
+        app.kubernetes.io/component: app
     spec:
       securityContext:
         runAsNonRoot: true

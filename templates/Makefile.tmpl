@@ -82,7 +82,7 @@ deploy: ## Deploy to Kubernetes with content sync (complete one-step deployment)
 	@echo "  $(YELLOW)Local access:$(NC) Run 'make port-forward' then visit http://localhost:8080"
 	@echo "  $(YELLOW)Port forward:$(NC) kubectl port-forward -n $(NAMESPACE) service/$(PROJECT_NAME) 8080:80"
 	@echo "  $(YELLOW)Health check:$(NC) http://localhost:8080/health"
-	@if $(KUBECTL) get ingress -n $(NAMESPACE) -l app=$(PROJECT_NAME) >/dev/null 2>&1; then \
+	@if $(KUBECTL) get ingress -n $(NAMESPACE) -l app.kubernetes.io/name=$(PROJECT_NAME) >/dev/null 2>&1; then \
 		echo "  $(YELLOW)Ingress URL:$(NC) https://$(DOMAIN)"; \
 	fi
 	@echo ""
@@ -107,9 +107,9 @@ destroy: ## Remove deployment from Kubernetes
 .PHONY: sync-content
 sync-content: ## Sync local content to running pods (no rebuild required)
 	@echo "$(BLUE)Syncing content to running pods...$(NC)"
-	@PODS=$$($(KUBECTL) get pods -n $(NAMESPACE) -l app=$(PROJECT_NAME) -o jsonpath='{.items[*].metadata.name}'); \
+	@PODS=$$($(KUBECTL) get pods -n $(NAMESPACE) -l app.kubernetes.io/name=$(PROJECT_NAME) -o jsonpath='{.items[*].metadata.name}'); \
 	if [ -z "$$PODS" ]; then \
-		echo "$(RED)No running pods found for app=$(PROJECT_NAME) in namespace=$(NAMESPACE)$(NC)"; \
+		echo "$(RED)No running pods found for $(PROJECT_NAME) in namespace=$(NAMESPACE)$(NC)"; \
 		exit 1; \
 	fi; \
 	for pod in $$PODS; do \
@@ -122,7 +122,7 @@ sync-content: ## Sync local content to running pods (no rebuild required)
 backup-content: ## Backup content from running pod to local directory
 	@echo "$(BLUE)Backing up content from pod...$(NC)"
 	@mkdir -p backup/content-$$(date +%Y%m%d-%H%M%S)
-	@POD=$$($(KUBECTL) get pod -n $(NAMESPACE) -l app=$(PROJECT_NAME) -o jsonpath='{.items[0].metadata.name}'); \
+	@POD=$$($(KUBECTL) get pod -n $(NAMESPACE) -l app.kubernetes.io/name=$(PROJECT_NAME) -o jsonpath='{.items[0].metadata.name}'); \
 	if [ -n "$$POD" ]; then \
 		$(KUBECTL) cp $(NAMESPACE)/$$POD:/srv/ backup/content-$$(date +%Y%m%d-%H%M%S)/ -c caddy; \
 		echo "$(GREEN)Content backed up to backup/content-$$(date +%Y%m%d-%H%M%S)/$(NC)"; \
@@ -140,19 +140,19 @@ status: ## Check deployment status
 		echo "$(YELLOW)Namespace:$(NC)"; \
 		$(KUBECTL) get namespace $(NAMESPACE) 2>/dev/null || echo "$(RED)Namespace not found$(NC)"; \
 		echo "\n$(YELLOW)Deployments:$(NC)"; \
-		$(KUBECTL) get deployments -n $(NAMESPACE) -l app=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No deployments found$(NC)"; \
+		$(KUBECTL) get deployments -n $(NAMESPACE) -l app.kubernetes.io/name=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No deployments found$(NC)"; \
 		echo "\n$(YELLOW)Pods:$(NC)"; \
-		$(KUBECTL) get pods -n $(NAMESPACE) -l app=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No pods found$(NC)"; \
+		$(KUBECTL) get pods -n $(NAMESPACE) -l app.kubernetes.io/name=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No pods found$(NC)"; \
 		echo "\n$(YELLOW)Services:$(NC)"; \
-		$(KUBECTL) get services -n $(NAMESPACE) -l app=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No services found$(NC)"; \
+		$(KUBECTL) get services -n $(NAMESPACE) -l app.kubernetes.io/name=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No services found$(NC)"; \
 		echo "\n$(YELLOW)Ingress:$(NC)"; \
-		$(KUBECTL) get ingress -n $(NAMESPACE) -l app=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No ingress found$(NC)"; \
+		$(KUBECTL) get ingress -n $(NAMESPACE) -l app.kubernetes.io/name=$(PROJECT_NAME) 2>/dev/null || echo "$(RED)No ingress found$(NC)"; \
 	fi
 
 .PHONY: logs
 logs: ## View application logs
 	@echo "$(BLUE)Viewing logs for $(PROJECT_NAME)...$(NC)"
-	@$(KUBECTL) logs -n $(NAMESPACE) -l app=$(PROJECT_NAME) -f --tail=100
+	@$(KUBECTL) logs -n $(NAMESPACE) -l app.kubernetes.io/name=$(PROJECT_NAME) -f --tail=100
 
 .PHONY: events
 events: ## View recent events for the namespace
@@ -163,7 +163,7 @@ events: ## View recent events for the namespace
 .PHONY: shell
 shell: ## Access a running pod shell
 	@echo "$(BLUE)Opening shell in pod...$(NC)"
-	@POD=$$($(KUBECTL) get pod -n $(NAMESPACE) -l app=$(PROJECT_NAME) -o jsonpath='{.items[0].metadata.name}'); \
+	@POD=$$($(KUBECTL) get pod -n $(NAMESPACE) -l app.kubernetes.io/name=$(PROJECT_NAME) -o jsonpath='{.items[0].metadata.name}'); \
 	if [ -n "$$POD" ]; then \
 		$(KUBECTL) exec -it -n $(NAMESPACE) $$POD -c caddy -- /bin/sh; \
 	else \

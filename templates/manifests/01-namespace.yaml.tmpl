@@ -3,4 +3,5 @@ kind: Namespace
 metadata:
   name: {{.Namespace}}
   labels:
-    displace.tech/project: {{.ProjectName}}
+    app.kubernetes.io/name: {{.ProjectName}}
+    app.kubernetes.io/managed-by: displace
